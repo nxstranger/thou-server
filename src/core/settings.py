@@ -28,9 +28,13 @@ SECRET_KEY = 'django-insecure-_+_0$2vu$j2yog7knct)))&#mvex!3zkpqr_s8p#+5p=evl_z^
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    '*'
+    # 'localhost'
+]
 
-
+CORS_ALLOW_CREDENTIALS = True
+CORS_ORIGIN_WHITELIST = ['http://localhost:3000', 'http://192.168.0.159:3000']
 # Application definition
 
 INSTALLED_APPS = [
@@ -40,13 +44,59 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
+    'corsheaders',
     'channels',
+
+    'chat',
 ]
+
+LOG_DIR = os.path.join(Path(BASE_DIR).parent, 'logs')
+proj_dirs = [
+    LOG_DIR,
+]
+
+
+LOGGING = {
+    'version': 1,
+    'formatters': {
+        'standard': {
+            'format': "[%(asctime)s] %(levelname)s [%(name)s:%(filename)s:%(lineno)s] %(message)s",
+            'datefmt': "%d/%b/%Y %H:%M:%S"
+        }
+    },
+    'handlers': {
+        # 'socket_logfile': {
+        #     'level': 'INFO',
+        #     'class': 'logging.handlers.RotatingFileHandler',
+        #     'filename': os.path.join(LOG_DIR, 'socker.log'),
+        #     'maxBytes': 5000000,
+        #     'backupCount': 10,
+        #     'formatter': 'standard',
+        # },
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'standard'
+        }
+    },
+    'loggers': {
+        'socket': {
+            'handlers': [
+                # 'socket_logfile',
+                'console'
+            ],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    }
+}
+
+AUTH_USER_MODEL = 'chat.ChatUser'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -71,6 +121,24 @@ TEMPLATES = [
         },
     },
 ]
+
+CHANNEL_LAYERS = {
+    "default": {
+        # "BACKEND": "channels.layers.InMemoryChannelLayer"
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379',
+    }
+}
+
 
 WSGI_APPLICATION = 'core.wsgi.application'
 ASGI_APPLICATION = 'core.asgi.application'
