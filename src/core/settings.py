@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,12 +30,17 @@ SECRET_KEY = 'django-insecure-_+_0$2vu$j2yog7knct)))&#mvex!3zkpqr_s8p#+5p=evl_z^
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    '*'
-    # 'localhost'
+    'localhost',
+    '192.168.0.159',
 ]
 
 CORS_ALLOW_CREDENTIALS = True
-CORS_ORIGIN_WHITELIST = ['http://localhost:3000', 'http://192.168.0.159:3000']
+CORS_ORIGIN_WHITELIST = [
+    'ws://192.168.0.159:3000',
+    'http://192.168.0.159:3000',
+    'ws://localhost:3000',
+    'http://localhost:3000',
+]
 # Application definition
 
 INSTALLED_APPS = [
@@ -44,7 +50,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'drf_yasg',
+
     'corsheaders',
+    'rest_framework_simplejwt',
+    'rest_framework',
     'channels',
 
     'chat',
@@ -106,6 +116,27 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'core.urls'
 
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
+ACCESS_TOKEN_LIFETIME = int(os.environ.get('ACCESS_TOKEN_LIFETIME_MINUTES', 480))
+REFRESH_TOKEN_LIFETIME = int(os.environ.get('REFRESH_TOKEN_LIFETIME_MINUTES', 10080))
+JWT_KEY = os.environ.get('JWT_KEY')
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=ACCESS_TOKEN_LIFETIME),
+    'REFRESH_TOKEN_LIFETIME': timedelta(minutes=REFRESH_TOKEN_LIFETIME),
+
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': JWT_KEY,
+    'AUTH_HEADER_TYPES': ('JWT',),
+}
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -121,6 +152,18 @@ TEMPLATES = [
         },
     },
 ]
+
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'api_key': {
+            'type': 'apiKey',
+            'description': 'JWT <token>',
+            'name': 'Authorization',
+            'in': 'header',
+        },
+    },
+    'LOGIN_URL': 'rest_login'
+}
 
 CHANNEL_LAYERS = {
     "default": {

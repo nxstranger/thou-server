@@ -9,9 +9,11 @@ https://docs.djangoproject.com/en/4.1/howto/deployment/asgi/
 
 import os
 
-from channels.routing import ProtocolTypeRouter
+from channels.security.websocket import AllowedHostsOriginValidator
+from channels.routing import ProtocolTypeRouter, URLRouter
 from django.core.asgi import get_asgi_application
-from chat.socket import ChatConsumer
+from chat import routing
+from chat.socket.auth_mw import TokenAuthMiddleware
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 
@@ -19,5 +21,11 @@ django_asgi_app = get_asgi_application()
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
-    'websocket': ChatConsumer.as_asgi(),
+    "websocket": AllowedHostsOriginValidator(
+        TokenAuthMiddleware(
+            URLRouter(
+                    routing.websocket_urlpatterns
+                )
+        )
+    ),
 })

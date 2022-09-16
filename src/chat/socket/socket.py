@@ -2,6 +2,7 @@ import json
 import logging
 
 from django.core.cache import cache
+from django.contrib.auth.models import AnonymousUser
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.layers import get_channel_layer
 from urllib.parse import parse_qs
@@ -21,32 +22,37 @@ class ChatConsumer(AsyncWebsocketConsumer):
         'MSG': ['message', 'type', 'stamp', 'contact']
     }
 
-    async def disconnect(self, code):
-        print('disconnect: user:{}'.format(self.scope['user_id']))
-        self.delete_channel_id_for_user(user_id=self.scope['user_id'])
-        print('disconnected')
-
     async def websocket_connect(self, message):
-        querystring = self.scope.get("query_string")
-        if querystring:
-            qs = parse_qs(querystring.decode('utf-8'))
-            print(f'qs: {qs}')
-            user_id = qs.get('userId')
-            if user_id:
-                self.scope['user_id'] = int(user_id[0])
-                self.set_channel_id_for_user(channel_id=self.channel_name, user_id=self.scope['user_id'])
-        await self.accept()
-        await self.send_you_are_connected()
+        print('self.scope: {}'.format(self.scope))
+        print('self.scope.user: {}'.format(self.scope.get('user')))
+        try:
+            await self.accept()
+            user = self.scope.get('user')
+            if any([
+                not user,
+                isinstance(user, AnonymousUser)
+            ]):
+                await self.close(code=3008)
+            else:
+                await self.send_contact_not_connected()
+        except Exception as exc:
+            print("ChatConsumer connect {}".format(exc))
+            logger.error("ChatConsumer connect {}".format(exc))
+            await self.close(code=3500)
 
     async def websocket_disconnect(self, message):
-        print('websocket_disconnect')
-        self.delete_channel_id_for_user(user_id=self.scope['user_id'])
+        print('call disconnect {}'.format(datetime.now()))
+        try:
+            user = self.scope.get('user')
+            if user and user.id:
+                print('disconnect: user:{}'.format(self.scope['user']))
+                self.delete_channel_id_for_user(user_id=self.scope['user'])
+        except Exception as exc:
+            logger.error('ChatConsumer/disconnect: {}'.format(exc))
+        print('disconnected')
 
     async def websocket_receive(self, message):
-        print(self.channel_name)
-        print(self.channel_layer)
-        print('websocket_receive')
-        print('received_message {}'.format(message))
+        print('websocket_receive {}'.format(message))
         await self.handle_type_message(message['text'])
 
     async def send(self, text_data=None, bytes_data=None, close=False):
@@ -128,16 +134,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'stamp': round(datetime.now().timestamp() * 1000)
         })
 
-    async def send_you_are_connected(self):
+    async def request_contact_name(self):
         response_message = {
-            'type': 'INFO',
-            'message': 'You are connected / {}'.format(self.channel_name),
+            'code': 1003,
+            'message': 'Set up your contact / {}'.format(self.channel_name),
             'stamp': round(datetime.now().timestamp() * 1000)}
         await self.send_json(response_message)
 
     async def send_contact_not_connected(self):
         response_message = {
-            'type': 'INFO',
+            'code': 'INFO',
             'message': 'Your contact is not connected',
             'stamp': round(datetime.now().timestamp() * 1000)}
         await self.send_json(response_message)
