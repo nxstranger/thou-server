@@ -15,6 +15,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
 
+# fix but related to version django 4 there is removed 'force_text'
+import django
+from django.utils.encoding import force_str
+django.utils.encoding.force_text = force_str
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -41,8 +47,6 @@ CORS_ORIGIN_WHITELIST = [
     'ws://localhost:3000',
     'http://localhost:3000',
 ]
-# Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -50,15 +54,21 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
+
     'drf_yasg',
 
-    'corsheaders',
+    'graphene_django',
+
     'rest_framework_simplejwt',
     'rest_framework',
+
     'channels',
 
     'chat',
 ]
+# Application definition
+
 
 LOG_DIR = os.path.join(Path(BASE_DIR).parent, 'logs')
 proj_dirs = [
@@ -103,10 +113,15 @@ LOGGING = {
 
 AUTH_USER_MODEL = 'chat.ChatUser'
 
+AUTHENTICATION_BACKENDS = [
+    "graphql_jwt.backends.JSONWebTokenBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',                     # extensions
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -128,11 +143,12 @@ REST_FRAMEWORK = {
 ACCESS_TOKEN_LIFETIME = int(os.environ.get('ACCESS_TOKEN_LIFETIME_MINUTES', 480))
 REFRESH_TOKEN_LIFETIME = int(os.environ.get('REFRESH_TOKEN_LIFETIME_MINUTES', 10080))
 JWT_KEY = os.environ.get('JWT_KEY')
+JWT_ALGORITHM = 'HS256'
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=ACCESS_TOKEN_LIFETIME),
     'REFRESH_TOKEN_LIFETIME': timedelta(minutes=REFRESH_TOKEN_LIFETIME),
 
-    'ALGORITHM': 'HS256',
+    'ALGORITHM': JWT_ALGORITHM,
     'SIGNING_KEY': JWT_KEY,
     'AUTH_HEADER_TYPES': ('JWT',),
 }
@@ -152,6 +168,23 @@ TEMPLATES = [
         },
     },
 ]
+
+
+GRAPHQL_JWT = {
+    "JWT_VERIFY_EXPIRATION": True,
+    "JWT_ALLOW_ARGUMENT": True,
+    "JWT_EXPIRATION_DELTA": timedelta(minutes=ACCESS_TOKEN_LIFETIME),
+    "JWT_REFRESH_EXPIRATION_DELTA":  timedelta(minutes=REFRESH_TOKEN_LIFETIME),
+    "JWT_SECRET_KEY": JWT_KEY,
+    "JWT_ALGORITHM": JWT_ALGORITHM,
+    "JWT_AUTH_HEADER_PREFIX": 'JWT',
+}
+GRAPHENE = {
+    "SCHEMA": 'core.schema.schema',
+    "MIDDLEWARE": [
+        "graphql_jwt.middleware.JSONWebTokenMiddleware",
+    ],
+}
 
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {

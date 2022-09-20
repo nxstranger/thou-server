@@ -5,10 +5,10 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, permissions, response
 from rest_framework.decorators import action
 from .models import ChatUser
-from .serializers import ChatUserSetContactSerializer
+from .serializers import ChatUserSetContactSerializer, ChatUserModelSerializer
 
 
-class ChatUserViewSet(viewsets.ViewSet):
+class ChatUserCustomViewSet(viewsets.ViewSet):
     queryset = ChatUser.objects.all().filter(is_active=True)
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -26,19 +26,30 @@ class ChatUserViewSet(viewsets.ViewSet):
         serializer = ChatUserSetContactSerializer(data=request.data)
         if serializer.is_valid():
             contact = self.queryset.get(username=serializer.data.get('contact_name'))
-            print('contact'.format(contact))
+            print('contact: {}'.format(contact))
             if contact:
                 user.receiver = contact
                 user.save()
                 return response.Response(status=200)
         else:
-            print('s not valid')
+            print('serializer not valid')
         # user = get_object_or_404(queryset, pk=pk)
         # serializer = UserSerializer(user)
         return response.Response(status=400)
 
 
+class ChatUserModelViewSet(viewsets.ModelViewSet):
+    queryset = ChatUser.objects.all()
+    serializer_class = ChatUserModelSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    http_method_names = ['post', 'get', 'delete', 'put']
 
+
+class ChatUserViewSetMixin(
+    ChatUserModelViewSet,
+    ChatUserCustomViewSet,
+):
+    pass
 
 # @csrf_exempt
 # def put_user_data(request):

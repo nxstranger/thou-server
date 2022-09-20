@@ -25,7 +25,10 @@ class TokenAuthMiddleware:
                 parsed_query = parse_qs(query_string)
                 token_key = parsed_query[b'user'][0].decode()
                 user_id = self.validate_token(token_key)
-                scope['user'] = await self.get_user(user_id)
+                user = await self.get_user(user_id)
+                scope['user'] = user
+                receiver = await self.get_user(user.receiver_id)
+                scope['receiver'] = receiver
             except AuthenticationFailed:
                 logger.error('TokenAuthMiddleware/AuthenticationFailed: {}')
                 scope['user'] = AnonymousUser()
